@@ -41,6 +41,7 @@ import {
   Lock,
   X,
   ClipboardList,
+  MessageSquare,
 } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
@@ -87,6 +88,7 @@ const Survey = () => {
     tiempo: '',
     presentacion: 0,
     calidad: '',
+    comentarios: '',
     confirmacion: false,
   });
 
@@ -96,8 +98,6 @@ const Survey = () => {
     let qualityScore = 5;
     if (answers.calidad.includes('esperaba más')) qualityScore = 3;
     if (answers.calidad.includes('No estoy')) qualityScore = 1;
-
-    // Promedio: (Tiempo + Presentación + Calidad) / 3
     return ((timeScore + answers.presentacion + qualityScore) / 3).toFixed(1);
   };
 
@@ -112,7 +112,7 @@ const Survey = () => {
         status: 'pending',
         clientName: '',
         daysProcess: 0,
-        globalScore: parseFloat(finalScore), // Guardamos el promedio real
+        globalScore: parseFloat(finalScore),
       });
       setStep(step + 1);
     } catch (e) {
@@ -211,6 +211,33 @@ const Survey = () => {
         </div>
       ),
     },
+    // --- NUEVO PASO: COMENTARIOS ---
+    {
+      title: '¿Algún comentario o sugerencia?',
+      content: (
+        <div className="text-center w-full">
+          <textarea
+            placeholder="Escribe aquí (Opcional)..."
+            className="w-full border border-gray-300 rounded-xl p-4 mb-6 focus:border-[#2d3b2d] outline-none h-32 resize-none"
+            onChange={(e) =>
+              setAnswers({ ...answers, comentarios: e.target.value })
+            }
+          ></textarea>
+          <button
+            onClick={() => setStep(5)}
+            className="w-full bg-[#2d3b2d] text-white py-4 rounded-full font-bold"
+          >
+            CONTINUAR
+          </button>
+          <button
+            onClick={() => setStep(5)}
+            className="mt-4 text-gray-400 text-sm hover:text-gray-600"
+          >
+            Omitir
+          </button>
+        </div>
+      ),
+    },
     {
       title: 'Confirmación final',
       content: (
@@ -239,13 +266,14 @@ const Survey = () => {
         </div>
       ),
     },
+    // --- CAMBIO DE TEXTO FINAL ---
     {
       title: '¡Gracias!',
       content: (
         <div className="text-center flex flex-col items-center">
           <CheckCircle className="w-20 h-20 text-green-700 mb-4" />
-          <p className="font-serif italic text-lg text-center">
-            "The best British clothing for the worst British weather."
+          <p className="font-serif italic text-2xl text-[#2d3b2d] font-bold">
+            "Wax For Life"
           </p>
         </div>
       ),
@@ -262,7 +290,7 @@ const Survey = () => {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
           >
-            {step > 0 && step < 5 && (
+            {step > 0 && step < 6 && (
               <h2 className="text-xl text-center mb-6 text-[#2d3b2d] font-bold uppercase tracking-widest">
                 {steps[step].title}
               </h2>
@@ -283,9 +311,8 @@ const Admin = () => {
   const [monthsList, setMonthsList] = useState([]);
   const [filterStore, setFilterStore] = useState('todas');
 
-  // Modales
   const [editingId, setEditingId] = useState(null);
-  const [viewingSurvey, setViewingSurvey] = useState(null); // Estado para ver detalles
+  const [viewingSurvey, setViewingSurvey] = useState(null);
   const [editData, setEditData] = useState({
     clientName: '',
     receptionDate: '',
@@ -359,7 +386,6 @@ const Admin = () => {
     return matchesMonth && matchesStore;
   });
 
-  // KPI Promedio Global
   const avgGlobalScore = (
     filteredData.reduce(
       (acc, c) => acc + (c.globalScore || c.presentacion),
@@ -371,6 +397,25 @@ const Admin = () => {
     completedSurveys.reduce((acc, c) => acc + c.daysProcess, 0) /
       completedSurveys.length || 0
   ).toFixed(1);
+
+  // --- RENDERIZADOR DE ESTRELLAS VISUALES ---
+  const renderStars = (score) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <Star
+          key={i}
+          size={16}
+          className={
+            i <= Math.round(score)
+              ? 'fill-[#a67c52] text-[#a67c52]'
+              : 'text-gray-300'
+          }
+        />
+      );
+    }
+    return <div className="flex gap-1 mt-1">{stars}</div>;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 font-sans text-sm md:text-base">
@@ -452,12 +497,31 @@ const Admin = () => {
           value={filteredData.length}
           icon={<Package />}
         />
-        <KpiCard
-          title="Exp. Global"
-          value={`${avgGlobalScore} / 5`}
-          icon={<Star />}
-          alert={avgGlobalScore < 4 && filteredData.length > 0}
-        />
+
+        {/* --- KPI MEJORADO: SCORE + ESTRELLAS --- */}
+        <div
+          className={`p-4 rounded-xl shadow-sm border-l-4 transition-all bg-white border-[#2d3b2d] hover:shadow-md`}
+        >
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-gray-500 text-xs uppercase font-bold tracking-wider">
+              Exp. Global
+            </span>
+            <div
+              className={`${
+                avgGlobalScore < 4 ? 'text-red-500' : 'text-[#2d3b2d]'
+              }`}
+            >
+              <Star />
+            </div>
+          </div>
+          <div className="flex flex-col items-center justify-center py-2">
+            <span className="text-3xl font-bold text-gray-800">
+              {avgGlobalScore} / 5
+            </span>
+            {renderStars(avgGlobalScore)}
+          </div>
+        </div>
+
         <KpiCard
           title="Días Promedio"
           value={avgDays > 0 ? `${avgDays}` : '-'}
@@ -581,10 +645,10 @@ const Admin = () => {
         </div>
       </div>
 
-      {/* MODAL VER DETALLES */}
+      {/* MODAL VER DETALLES (CON COMENTARIOS) */}
       {viewingSurvey && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl relative">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setViewingSurvey(null)}
               className="absolute top-4 right-4 text-gray-400 hover:text-black"
@@ -638,7 +702,7 @@ const Admin = () => {
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-600">3. Calidad:</span>
                   <span
-                    className={`font-bold ${
+                    className={`font-bold text-right w-1/2 ${
                       viewingSurvey.calidad.includes('No')
                         ? 'text-red-500'
                         : 'text-[#2d3b2d]'
@@ -646,6 +710,22 @@ const Admin = () => {
                   >
                     {viewingSurvey.calidad}
                   </span>
+                </div>
+
+                {/* --- SECCIÓN COMENTARIOS EN MODAL --- */}
+                <div className="pt-2">
+                  <span className="block text-gray-600 mb-1 flex items-center gap-1">
+                    <MessageSquare size={14} /> Comentarios:
+                  </span>
+                  <div className="bg-gray-50 p-3 rounded-lg text-gray-700 italic border border-gray-200">
+                    {viewingSurvey.comentarios ? (
+                      viewingSurvey.comentarios
+                    ) : (
+                      <span className="text-gray-400 not-italic">
+                        Sin comentarios adicionales.
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -671,7 +751,7 @@ const Admin = () => {
         </div>
       )}
 
-      {/* MODAL COMPLETAR (Igual que antes) */}
+      {/* MODAL COMPLETAR */}
       {editingId && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl">
@@ -739,7 +819,7 @@ const Admin = () => {
         </div>
       )}
 
-      {/* MODAL CAMBIAR CLAVE (Igual que antes) */}
+      {/* MODAL CAMBIAR CLAVE */}
       {showPassModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl">
